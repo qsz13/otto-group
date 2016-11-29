@@ -51,12 +51,14 @@ if __name__ == "__main__":
         #features = preprocessing.scale(np.array([row[1:-1] for row in data]))
     #    features = np.array([row[1:-1] for row in data])
     #    labels = np.array([row[-1][-1] for row in data])
-
+    sample = pd.read_csv('sampleSubmission.csv')
+    
     # Import Data
     tests = pd.read_csv('test.csv')
     tests = tests.drop('id', axis=1)
     scaler = StandardScaler(copy=False, with_mean=True, with_std=True)
     tests = scaler.fit_transform(tests)
+    tests = xgb.DMatrix(tests)
     #print tests
     
     #features = pd.read_csv('../input/train.csv')
@@ -109,10 +111,11 @@ if __name__ == "__main__":
     param = {'eta':0.05,'min_child_weight':5.5,'max_delta_step':0.45,'max_depth':12,'silent':1, 'objective':'multi:softprob', 'nthread':60, 'eval_metric':'mlogloss','num_class':9,'subsample':1,'colsample_bytree':0.5,'gamma':0.5}
     num_round = 900
     bst = xgb.train(param, dtrain, num_round)
-    print cross_val_score(calibrated_clf, features, labels, cv=5)
+    #print cross_val_score(calibrated_clf, features, labels, cv=5)
     
     predicted_labels = bst.predict(tests)
     len_lbl = len(predicted_labels)
+    print len_lbl
     # knn 78%
     #neigh = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
     #neigh.fit(features, labels)
@@ -123,12 +126,11 @@ if __name__ == "__main__":
     #clf_mlp.fit(features, labels)
     #print cross_val_score(clf_mlp, features, labels, cv=5)
     
+    '''
     output_mtx = np.zeros((len_lbl,10),dtype=np.uint32)
     for i in xrange(len_lbl):
         output_mtx[i,0] = i + 1
         output_mtx[i,predicted_labels[i]+1] = 1
-    #print output_mtx[0]
-    #print output_mtx[144367]
     raw_data = {'id': output_mtx[:,0],
         'class_1': output_mtx[:,1],
         'class_2': output_mtx[:,2],
@@ -142,4 +144,8 @@ if __name__ == "__main__":
         }
     df = pd.DataFrame(raw_data, columns = ['id', 'class_1', 'class_2', 'class_3', 'class_4', 'class_5', 'class_6', 'class_7', 'class_8', 'class_9'])
     df.to_csv('result.csv',index = False)
+    '''
+    
+    pred_test = pd.DataFrame(predicted_labels, index=sample.id.values, columns=sample.columns[1:])
+	pred_test.to_csv('result.csv', index_label='id')
     
