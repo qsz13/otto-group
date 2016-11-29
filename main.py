@@ -23,6 +23,7 @@ from sklearn.metrics import log_loss
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 
+import xgboost as xgb
 
 def get_best_svm_param(ft, lbl):
     #param_grid = [{'C': [1, 10, 100], 'kernel': ['linear']},{'C': [1, 10, 100, 1000], 'gamma': [0.1, 0.01], 'kernel': ['rbf']}]
@@ -93,6 +94,7 @@ if __name__ == "__main__":
     #features, features_test, labels, labels_test = train_test_split(features, labels, test_size=0.20, random_state=36)
 
     # calibrated random forest 81.6%
+    '''
     clf = RandomForestClassifier(n_estimators=50, random_state=1337, n_jobs=-1)
     calibrated_clf = CalibratedClassifierCV(clf, method='isotonic', cv=5)
     calibrated_clf.fit(features, labels)
@@ -101,9 +103,16 @@ if __name__ == "__main__":
     #print cross_val_score(calibrated_clf, features, labels, cv=5)
     #ypreds = calibrated_clf.predict_proba(features_test)
     #print("logloss with calibration : ", log_loss(labels_test, ypreds, eps=1e-15, normalize=True))
-
-
-
+    '''
+    
+    dtrain = xgb.DMatrix(features, label=labels)
+    param = {'eta':0.05,'min_child_weight':5.5,'max_delta_step':0.45,'max_depth':12,'silent':1, 'objective':'multi:softprob', 'nthread':60, 'eval_metric':'mlogloss','num_class':9,'subsample':1,'colsample_bytree':0.5,'gamma':0.5}
+    num_round = 900
+    bst = xgb.train(param, dtrain, num_round)
+    print cross_val_score(calibrated_clf, features, labels, cv=5)
+    
+    predicted_labels = bst.predict(tests)
+    len_lbl = len(predicted_labels)
     # knn 78%
     #neigh = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
     #neigh.fit(features, labels)
@@ -132,5 +141,5 @@ if __name__ == "__main__":
         'class_9': output_mtx[:,9]
         }
     df = pd.DataFrame(raw_data, columns = ['id', 'class_1', 'class_2', 'class_3', 'class_4', 'class_5', 'class_6', 'class_7', 'class_8', 'class_9'])
-    df.to_csv('result.csv',index = False, index_label =False)
+    df.to_csv('result.csv',index = False)
     
