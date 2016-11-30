@@ -27,7 +27,6 @@ import xgboost as xgb
 
 def get_best_svm_param(ft, lbl):
     #param_grid = [{'C': [1, 10, 100], 'kernel': ['linear']},{'C': [1, 10, 100, 1000], 'gamma': [0.1, 0.01], 'kernel': ['rbf']}]
-    '''
     param_grid = [{'C': [1, 5, 10, 15], 'gamma': [0.1, 0.01, 0.005], 'kernel': ['rbf']}]
     cv = ShuffleSplit(n_splits=4, test_size=0.15, train_size=0.15, random_state=0)
     clf_svm = svm.SVC()
@@ -35,22 +34,42 @@ def get_best_svm_param(ft, lbl):
     gs.fit(ft, lbl)
     print gs.best_estimator_, gs.best_params_, gs.best_score_
     best_param = gs.best_params_
-    '''
     print 'Start on the whole training set...'
-    #clf_svm = svm.SVC(kernel = best_param['kernel'], gamma = best_param['gamma'], C = best_param['C'])
-    clf_svm = svm.SVC(kernel='rbf', gamma=0.01, C=5)
+    #clf_svm = svm.SVC(kernel='rbf', gamma=0.01, C=5)
+    clf_svm = svm.SVC(kernel = best_param['kernel'], gamma = best_param['gamma'], C = best_param['C'])
     clf_svm.fit(features, labels)
     print cross_val_score(clf_svm, features, labels, cv = 5)
 
-if __name__ == "__main__":
+def test_decision_tree(features, labels):
+    clf_tree = tree.DecisionTreeClassifier()
+    clf_tree.fit(features,labels)
+    scores = cross_val_score(clf_svm,features,labels,cv = 5)
+    
+def test_cal_rfc(features, labels):
+    # Split Train / Test (needed for calibrated random forest)
+    features, features_test, labels, labels_test = train_test_split(features, labels, test_size=0.20, random_state=36)
+    clf = RandomForestClassifier(n_estimators=50, random_state=1337, n_jobs=-1)
+    calibrated_clf = CalibratedClassifierCV(clf, method='isotonic', cv=5)
+    calibrated_clf.fit(features, labels)
+    predicted_labels = calibrated_clf.predict(tests)
+    len_lbl = len(predicted_labels)
+    print cross_val_score(calibrated_clf, features, labels, cv=5)
+    ypreds = calibrated_clf.predict_proba(features_test)
+    print("logloss with calibration : ", log_loss(labels_test, ypreds, eps=1e-15, normalize=True))
 
-    #with open('train.csv', 'rb') as csvfile:
-    #    datareader = csv.reader(csvfile, dialect="excel")
-    #    datareader.next()
-    #    data = [row for row in datareader]
-        #features = preprocessing.scale(np.array([row[1:-1] for row in data]))
-    #    features = np.array([row[1:-1] for row in data])
-    #    labels = np.array([row[-1][-1] for row in data])
+def test_knn(features, labels):
+    neigh = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
+    neigh.fit(features, labels)
+    print cross_val_score(neigh, features, labels, cv=5)
+
+def test_mlp(features, labels):
+    clf_mlp = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes = (25,), random_state = 1)
+    clf_mlp.fit(features, labels)
+    print cross_val_score(clf_mlp, features, labels, cv=5)
+    
+    
+if __name__ == "__main__":
+    #read sample
     sample = pd.read_csv('sampleSubmission.csv')
     
     # Import Data
@@ -59,7 +78,6 @@ if __name__ == "__main__":
     scaler = StandardScaler(copy=False, with_mean=True, with_std=True)
     tests = scaler.fit_transform(tests)
     tests = xgb.DMatrix(tests)
-    #print tests
     
     #features = pd.read_csv('../input/train.csv')
     features = pd.read_csv('train.csv')
@@ -76,56 +94,40 @@ if __name__ == "__main__":
     #features = preprocessing.normalize(features)
     scaler = StandardScaler(copy=False, with_mean=True, with_std=True)
     features = scaler.fit_transform(features, labels)
-    #print features
+
     #minmax scalar
     #min_max_scaler = preprocessing.MinMaxScaler()
     #features = min_max_scaler.fit_transform(features)
-    #print features
+
 
     # svm 81.5%
     #get_best_svm_param(features, labels)
 
 
     # decision tree 70%
-    #clf_tree = tree.DecisionTreeClassifier()
-    #clf_tree.fit(features,labels)
-    #scores = cross_val_score(clf_svm,features,labels,cv = 5)
+    #test_decision_tree(features, labels)
 
-
-    # Split Train / Test (needed for calibrated random forest)
-    #features, features_test, labels, labels_test = train_test_split(features, labels, test_size=0.20, random_state=36)
 
     # calibrated random forest 81.6%
-    '''
-    clf = RandomForestClassifier(n_estimators=50, random_state=1337, n_jobs=-1)
-    calibrated_clf = CalibratedClassifierCV(clf, method='isotonic', cv=5)
-    calibrated_clf.fit(features, labels)
-    predicted_labels = calibrated_clf.predict(tests)
-    len_lbl = len(predicted_labels)
-    #print cross_val_score(calibrated_clf, features, labels, cv=5)
-    #ypreds = calibrated_clf.predict_proba(features_test)
-    #print("logloss with calibration : ", log_loss(labels_test, ypreds, eps=1e-15, normalize=True))
-    '''
+    #test_cal_rfc(features, labels)
     
+    # knn 78%
+    #test_knn(features, labels)
+    
+    # MLP 79%
+    #test_mlp(features, labels)
+    
+    #XGBoost
     dtrain = xgb.DMatrix(features, label=labels)
     param = {'eta':0.05,'min_child_weight':5.5,'max_delta_step':0.45,'max_depth':12,'silent':1, 'objective':'multi:softprob', 'nthread':60, 'eval_metric':'mlogloss','num_class':9,'subsample':1,'colsample_bytree':0.5,'gamma':0.5}
     num_round = 900
     bst = xgb.train(param, dtrain, num_round)
     #print cross_val_score(calibrated_clf, features, labels, cv=5)
-    
     predicted_labels = bst.predict(tests)
     len_lbl = len(predicted_labels)
-    print len_lbl
-    # knn 78%
-    #neigh = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
-    #neigh.fit(features, labels)
-    #print cross_val_score(neigh, features, labels, cv=5)
-
-    # MLP 79%
-    #clf_mlp = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes = (25,), random_state = 1)
-    #clf_mlp.fit(features, labels)
-    #print cross_val_score(clf_mlp, features, labels, cv=5)
     
+    
+    # Output
     '''
     output_mtx = np.zeros((len_lbl,10),dtype=np.uint32)
     for i in xrange(len_lbl):
