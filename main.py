@@ -19,6 +19,8 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn.neural_network import MLPClassifier
 
+from sklearn import linear_model
+
 from sklearn.metrics import log_loss
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
@@ -66,7 +68,11 @@ def test_mlp(features, labels):
     clf_mlp = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes = (25,), random_state = 1)
     clf_mlp.fit(features, labels)
     print cross_val_score(clf_mlp, features, labels, cv=5)
-    
+
+def test_logit(features, labels):
+    logistic = linear_model.LogisticRegression(C=1e5)
+    logistic.fit(features, labels)
+    print cross_val_score(logistic, features, labels, cv=5)
     
 if __name__ == "__main__":
     #read sample
@@ -77,7 +83,7 @@ if __name__ == "__main__":
     tests = tests.drop('id', axis=1)
     scaler = StandardScaler(copy=False, with_mean=True, with_std=True)
     tests = scaler.fit_transform(tests)
-    tests = xgb.DMatrix(tests)
+    tests_xgb = xgb.DMatrix(tests)
     
     #features = pd.read_csv('../input/train.csv')
     features = pd.read_csv('train.csv')
@@ -107,15 +113,20 @@ if __name__ == "__main__":
     # decision tree 70%
     #test_decision_tree(features, labels)
 
-
+    
     # calibrated random forest 81.6%
     #test_cal_rfc(features, labels)
+    
     
     # knn 78%
     #test_knn(features, labels)
     
+    # logistic regression
+    #test_logit(features, labels)
+    
     # MLP 79%
     #test_mlp(features, labels)
+    
     
     #XGBoost
     dtrain = xgb.DMatrix(features, label=labels)
@@ -123,11 +134,11 @@ if __name__ == "__main__":
     num_round = 900
     bst = xgb.train(param, dtrain, num_round)
     #print cross_val_score(calibrated_clf, features, labels, cv=5)
-    predicted_labels = bst.predict(tests)
+    predicted_labels = bst.predict(tests_xgb)
     len_lbl = len(predicted_labels)
     
     
-    # Output
+    # Output (for precise class assignment)
     '''
     output_mtx = np.zeros((len_lbl,10),dtype=np.uint32)
     for i in xrange(len_lbl):
@@ -145,9 +156,10 @@ if __name__ == "__main__":
         'class_9': output_mtx[:,9]
         }
     df = pd.DataFrame(raw_data, columns = ['id', 'class_1', 'class_2', 'class_3', 'class_4', 'class_5', 'class_6', 'class_7', 'class_8', 'class_9'])
-    df.to_csv('result.csv',index = False)
+    df.to_csv('classification.csv',index = False)
     '''
     
+    # Output (probability)
     pred_test = pd.DataFrame(predicted_labels, index=sample.id.values, columns=sample.columns[1:])
-	pred_test.to_csv('result.csv', index_label='id')
+    pred_test.to_csv('result.csv', index_label='id')
     
