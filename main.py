@@ -70,7 +70,10 @@ def test_mlp(features, labels):
     print cross_val_score(clf_mlp, features, labels, cv=5)
 
 def test_logit(features, labels):
-    logistic = linear_model.LogisticRegression(C=1e5)
+    logistic = linear_model.LogisticRegression(C=100000.0, class_weight=None, dual=False,
+          fit_intercept=True, intercept_scaling=1, max_iter=100,
+          multi_class='ovr', n_jobs=-1, penalty='l2', random_state=None,
+          solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
     logistic.fit(features, labels)
     print cross_val_score(logistic, features, labels, cv=5)
     
@@ -121,8 +124,10 @@ if __name__ == "__main__":
     # knn 78%
     #test_knn(features, labels)
     
+    
     # logistic regression
     #test_logit(features, labels)
+    
     
     # MLP 79%
     #test_mlp(features, labels)
