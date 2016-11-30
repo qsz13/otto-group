@@ -125,7 +125,7 @@ if __name__ == "__main__":
     #test_knn(features, labels)
     
     
-    # logistic regression
+    # logistic regression 75%
     #test_logit(features, labels)
     
     
