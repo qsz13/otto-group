@@ -1,5 +1,6 @@
 Programming language:
 Python
+
 Package Dependencies:
 pandas, numpy, scipy, sklearn, xgboost
 
@@ -14,3 +15,6 @@ Package Install: cd otto-group/ && pip install -r requirements.txt
 Running Code:
 Execute: python main.py
 Output: result.csv
+
+To test ensemble weight:
+Execute: python emsemble_weight.py
